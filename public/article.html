@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Article - Fun Facts Blog</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header Section -->
+        <header>
+            <div class="logo">
+                <h1>Fun Facts Blog</h1>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="index.html#home">Home</a></li>
+                    <li><a href="index.html#blog">Blog</a></li>
+                    <li><a href="index.html#contact">Contact</a></li>
+                    <li><button id="dark-mode-toggle" title="Toggle Dark Mode">
+                            <i class="fas fa-moon"></i>
+                        </button></li>
+                </ul>
+            </nav>
+        </header>
+
+        <!-- Article Content -->
+        <section class="article-section">
+            <div class="article-container">
+                <div class="article-header">
+                    <h2 id="article-title">Loading article...</h2>
+                    <div class="article-meta">
+                        <span class="article-date">Published: <span id="article-date">May 10, 2025</span></span>
+                        <div class="like-container">
+                            <button class="like-btn"><i class="far fa-heart"></i></button>
+                            <span class="like-count">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="article-image">
+                    <img id="article-image" src="" alt="Article image">
+                </div>
+
+                <div class="article-content" id="article-content">
+                    <!-- Content will be loaded here via JavaScript -->
+                </div>
+
+                <!-- Tags Section -->
+                <div class="article-tags">
+                    <span>Tags:</span>
+                    <div id="article-tags" class="tags-container">
+                        <!-- Tags will be loaded here via JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recommended Articles -->
+            <div class="recommended-articles">
+                <h3>Recommended Articles</h3>
+                <div class="recommended-container" id="recommended-container">
+                    <!-- Related articles will be loaded here via JavaScript -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer Section -->
+        <footer>
+            <p>&copy; 2025 Fun Facts Blog. All Rights Reserved.</p>
+        </footer>
+    </div>
+
+    <script src="js/main.js"></script>
+    <script>
+        // Get article ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const articleId = urlParams.get('id');
+
+        // Function to load article content
+        async function loadArticle() {
+            try {
+                const response = await fetch(`/api/articles/${articleId}`);
+                if (!response.ok) {
+                    throw new Error('Article not found');
+                }
+
+                const article = await response.json();
+
+                // Update page with article content
+                document.getElementById('article-title').textContent = article.title;
+                document.getElementById('article-date').textContent = article.date;
+                document.getElementById('article-image').src = article.image;
+                document.getElementById('article-image').alt = article.title;
+
+                // Create article content
+                const contentDiv = document.getElementById('article-content');
+                contentDiv.innerHTML = '';
+
+                article.content.forEach(paragraph => {
+                    const p = document.createElement('p');
+                    p.textContent = paragraph;
+                    contentDiv.appendChild(p);
+                });
+
+                // Display tags
+                const tagsContainer = document.getElementById('article-tags');
+                tagsContainer.innerHTML = '';
+                article.tags.forEach(tag => {
+                    const tagSpan = document.createElement('span');
+                    tagSpan.textContent = tag;
+                    tagSpan.classList.add('tag');
+                    tagsContainer.appendChild(tagSpan);
+                });
+
+                // Load recommended articles
+                loadRecommendedArticles(article.tags);
+
+                // Set up like button
+                const likeBtn = document.querySelector('.like-btn');
+                const likeCount = document.querySelector('.like-count');
+
+                // Check if article was liked before
+                const likes = JSON.parse(localStorage.getItem('articleLikes')) || {};
+                if (likes[articleId]) {
+                    likeBtn.innerHTML = '<i class="fas fa-heart"></i>';
+                    likeBtn.classList.add('liked');
+                } else {
+                    likeBtn.innerHTML = '<i class="far fa-heart"></i>';
+                    likeBtn.classList.remove('liked');
+                }
+
+                likeBtn.addEventListener('click', function () {
+                    const likes = JSON.parse(localStorage.getItem('articleLikes')) || {};
+                    if (likes[articleId]) {
+                        delete likes[articleId];
+                        likeBtn.innerHTML = '<i class="far fa-heart"></i>';
+                        likeBtn.classList.remove('liked');
+                    } else {
+                        likes[articleId] = true;
+                        likeBtn.innerHTML = '<i class="fas fa-heart"></i>';
+                        likeBtn.classList.add('liked');
+                    }
+                    localStorage.setItem('articleLikes', JSON.stringify(likes));
+                });
+
+            } catch (error) {
+                console.error('Error loading article:', error);
+                document.getElementById('article-content').innerHTML =
+                    '<p class="error-message">Sorry, we couldn\'t load this article. Please try again later.</p>';
+            }
+        }
+
+        // Function to load recommended articles
+        async function loadRecommendedArticles(tags) {
+            try {
+                const response = await fetch('/api/articles');
+                if (!response.ok) {
+                    throw new Error('Failed to load recommended articles');
+                }
+
+                const articles = await response.json();
+
+                // Filter articles by tags and exclude current article
+                const filteredArticles = articles.filter(article => {
+                    if (article.id === articleId) return false;
+
+                    // Check if article has at least one matching tag
+                    return article.tags.some(tag => tags.includes(tag));
+                });
+
+                // Display recommended articles
+                const container = document.getElementById('recommended-container');
+                container.innerHTML = '';
+
+                if (filteredArticles.length === 0) {
+                    container.innerHTML = '<p>No related articles found.</p>';
+                    return;
+                }
+
+                // Show up to 3 recommended articles
+                const recommendedArticles = filteredArticles.slice(0, 3);
+
+                recommendedArticles.forEach(article => {
+                    const articleCard = document.createElement('div');
+                    articleCard.classList.add('recommended-article');
+
+                    articleCard.innerHTML = `
+                        <img src="${article.image}" alt="${article.title}">
+                        <h4>${article.title}</h4>
+                        <a href="article.html?id=${article.id}" class="read-btn">Read Article</a>
+                    `;
+
+                    container.appendChild(articleCard);
+                });
+
+            } catch (error) {
+                console.error('Error loading recommended articles:', error);
+                document.getElementById('recommended-container').innerHTML =
+                    '<p class="error-message">Could not load recommendations.</p>';
+            }
+        }
+
+        // Load article when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            if (articleId) {
+                loadArticle();
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
+    <style type="text/css">
+        body {
+            cursor: url('data:image/x-icon;base64,AAACAAEAICAAAAQAAwCoEAAAFgAAACgAAAAgAAAAQAAAAAEAIAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAMAAAAIAAAACwAAAAkAAAAEAAAAAQAAAAAAAAAAAAAAAgAAAAIAAAACAAAAAQAAAAAAAAAAAAAAAgAAAAYCAgIRCgoKJhMTEzYFBQUmAAAAEwAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAACgAAABYAAAAdAAAAGQAAAA4AAAAEAAAAAQAAAAEAAAAGAAAACQAAAAgAAAAEAAAAAQAAAAIAAAAHBgYGFzMzM02RkZGldnZ2kRISEjUAAAASAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUCAgIVAAAAJgAAADIAAAAuAAAAHgAAAA0AAAADAAAABAAAAA4AAAAXAAAAFgAAAA0AAAAGAAAACgkJCRxISEhhsbGxwfT09Pdvb2+LBQUFIgAAAAsAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEBJiYmLVVVVWUlJSVMAAAAPwAAAEAAAAAyAAAAGwEBAQoEBAQKAAAAFwAAACgAAAAqAAAAHgAAABQKCgojUFBQa6ioqLvw8PD0sLCwwxsbGz8AAAARAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACIiIiKYmJib3d3d4MrKytIyMjJhAAAARwAAAEIBAQEsHBwcLVdXV14vLy9GAAAAMwAAADwAAAAzDAwMNFRUVHWrq6u/4eHh6djY2OM2NjZfAAAAHAAAAAgAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAwMDe3t7e+/v7+/4+Pj4/////8fHx9IiIiJeAAAATAMDAztCQkJay8vLz7y8vMUbGxtOAAAARgwMDEtqamqMzs7O2vT09Pf4+Pj6bm5ulAUFBS8AAAASAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAICAgJaWlpaiIiIiLq6urv9/f39/////5mZmbMKCgpXAQEBRTc3N13Q0NDW9vb2+I6OjqlhYWGNr6+vw/b29vj+/v7+/f39/sLCwtQiIiJZAAAAJQAAAA0AAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYGBgYJCQkJe3t7fPf39/f/////4eHh6DQ0NHQAAABNKysrYMfHx9P/////+Pj4+vn5+fv+/v7+//////7+/v7v7+/zdnZ2nwwMDEgAAAAoAAAAEQAAAAUAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBARWVlZW6enp6v/////+/v7+f39/qBoaGmJFRUV6ysrK2P7+/v7q6urw3Nzc5M/Pz9bu7u7w/v7+/svLy9hHR0d+BAQESAAAADIAAAAcAAAADAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwMDA0xMTE3h4eHi///////////X19fklJSUtbW1tcrz8/P27+/v84mJiaRRUVFtQkJCV8bGxs3+/v7+uLi4yzIyMm8AAABFAAAAOAAAACMAAAAQAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAwMDTExMTd3d3d7//////v7+/v39/f74+Pj6///////////Dw8POQEBAXAUFBSAWFhYxw8PDzv7+/v7v7+/0nJyctkZGRm8MDAw4AAAAHgAAAA4AAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBAROTk5P39/f4f/////6+vr79PT09/7+/v7/////7Ozs7oKCgo4iIiIyISEhMYyMjJvr6+vv///////////5+fn62NjY3i8vL0YAAAASAAAACQAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQUFBVhYWFnk5OTm//////Dw8PSfn5+7v7+/zMTExMqDg4OIJiYmLSEhISakpKSp+/v7/P/////5+fn74ODg6bm5uceNjY2cGxsbLwAAABAAAAAJAAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKCgoKaGhoaerq6uv/////4eHh6TQ0NG0bGxtFHx8fMQoKCg0CAgIEYGBgYu/v7/D/////7Ozs8ZSUlLYrKytpEhISSgwMDDcBAQElAAAAHgAAABYAAAANAAAABgAAAAIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8PDw97e3t98vLy8//////BwcHTFxcXVAAAACkAAAAOAAAAAgcHBwt4eHh89fX19v/////q6urvWFhYjAQEBFMFBQVMAAAAQAAAADoAAAA1AAAALAAAACAAAAARAAAABgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEhISEo2NjY/4+Pj5/////5mZmbcJCQlFAAAAIwAAAAwAAAAHAgICEFZWVmbj4+Pn/f39/fv7+/ytra3HYmJilE5OToQ4ODhxFxcXVwEBAUQAAAA/AAAANAAAACAAAAANAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXFxcXoaGhpP39/f38/Pz9eHh4nwUFBTsAAAAeAAAADwAAABQDAwMjLCwsUri4uMj5+fn7//////n5+fvm5ubt4uLi6s/Pz9uWlpawSEhIdA4ODksAAAA9AAAAKQAAABEAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACYmJie/v7/D/////+Li4upRUVGBBAQENgAAACEAAAAdFBQUOlVVVXqdnZ2219fX4v39/f7///////////////////////////b29vfb29vhd3d3kw8PD0IAAAAmAAAADwAAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEBR0dHSePj4+X/////wcHB0icnJ2ICAgI5BgYGMkVFRWmbm5uz29vb5PHx8fX6+vr7//////////////////////r6+vrw8PDx9vb29/7+/v7CwsLKKSkpSAAAABsAAAAKAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAICAgJubm5y+fn5+vr6+vuWlpa1FxcXWRAQEEtzc3OU39/f5/////////////////z8/P339/f439/f4rKysreDg4OJXFxcYVhYWFyenp6g8fHx8ZOTk5oREREjAAAADgAAAAQAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAgICZycnKH/////3t7e52xsbJpNTU2Cu7u7zv39/f7/////+vr6++7u7vHb29vgrKyss25ubnc/Pz9GFRUVGgQEBAcBAQEDAAAAAWxsbG2+vr6/RkZGSgAAAAcAAAAFAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAqKiou19fX2/n5+frW1tbiqqqqxcvLy9r9/f3+/Pz8/eLi4ue6urrDjo6OmFRUVF0hISEoAwMDBwAAAAIAAAABAAAAAAAAAAABAQEBHR0dHSwsLCwLCwsMAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgICA2hoaG/5+fn6+fn5+vPz8/fi4uLr/f39/vv7+/zNzc3Uh4eHkkxMTFYeHh4kBgYGCgAAAAIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASEhIWu7u7wP/////+/v7++fn5+/39/f7b29vik5OToEJCQk8bGxsiAwMDBwAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAkxMTFTz8/P1///////////6+vr7wMDAy1dXV2gWFhYiAgICBwAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFBQUKnp6epf//////////9PT09qenp7QvLy9BBAQEDgEBAQUAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgICA0ZGRk3e3t7h/f39/dzc3OKJiYmZHBwcLQEBAQkAAAADAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAeHh4fm5ubn/Pz8/Ta2trfbm5ufw8PDx8AAAAHAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEBF1dXV7ExMTGx8fHy1JSUmAHBwcWAAAABwAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASEhISenp6e5ubm51KSkpPBAQEDAAAAAUAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABERERE7Ozs7OTk5OhMTExUAAAACAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBAQQEBAQGBgYGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////////5////8f///+P/4//H/+HnB//g4A//+OAP//hgH//4Ax//+AcP//gGB//4DAf/+Pw///j8P//w/A//8PwD//D4AP/x4AD/8YAY/+AB/f/gB///4B///8B////B////g////4f///8f////P////3//////////////8='), auto;
+        }
+    </style>
+</body>
+
+</html>
